@@ -25,8 +25,7 @@ import java.io.File;
 
 public class Splash extends ActionBarActivity {
 
-    Intent cameraIntent;
-    Intent gpsIntent;
+    Intent cameraIntent,submitIntent;
 
     private LocationManager locationManager;
     private LocationListener locationListener;
@@ -39,6 +38,8 @@ public class Splash extends ActionBarActivity {
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_splash);
+
+        submitIntent = new Intent(this, Submit.class);
 
         gpsString = (TextView) findViewById(R.id.gpsString);
 
@@ -132,6 +133,9 @@ public class Splash extends ActionBarActivity {
                     if(imageFile.exists()){
                         locationManager.requestLocationUpdates("gps", 5000, 0, locationListener);
                         Toast.makeText(this, "successfully saved at " + imageFile.getAbsolutePath(), Toast.LENGTH_LONG).show();
+                        Bundle bundle = new Bundle();
+                        submitIntent.putExtra("imagePath", imageFile.getAbsolutePath());
+                        startActivity(submitIntent);
                     }else{
                         Toast.makeText(this, "no success", Toast.LENGTH_LONG).show();
                     }

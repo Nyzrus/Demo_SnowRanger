@@ -7,5 +7,6 @@
     <string name="title_activity_camera_">Camera_Activity</string>
     <color name="white">#ffffff</color>
     <string name="title_activity_camera__test">Camera_Test</string>
+    <string name="title_activity_submit">Submit</string>
 
 </resources>
