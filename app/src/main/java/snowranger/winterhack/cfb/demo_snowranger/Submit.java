@@ -3,9 +3,11 @@ package snowranger.winterhack.cfb.demo_snowranger;
 import android.content.Intent;
 import android.graphics.Bitmap;
 import android.graphics.BitmapFactory;
+import android.os.AsyncTask;
 import android.support.v7.app.ActionBarActivity;
 import android.os.Bundle;
 import android.util.Base64;
+import android.util.Log;
 import android.view.Menu;
 import android.view.MenuItem;
 import android.view.View;
@@ -15,22 +17,42 @@ import android.widget.ImageView;
 import android.widget.TextView;
 import android.widget.Toast;
 
+import org.apache.http.HttpEntity;
+import org.apache.http.HttpResponse;
+import org.apache.http.StatusLine;
+import org.apache.http.client.ClientProtocolException;
+import org.apache.http.client.HttpClient;
+import org.apache.http.client.methods.HttpGet;
+import org.apache.http.impl.client.DefaultHttpClient;
 import org.json.JSONException;
 import org.json.JSONObject;
 
+import java.io.BufferedReader;
 import java.io.ByteArrayOutputStream;
+import java.io.DataOutputStream;
+import java.io.IOException;
+import java.io.InputStream;
+import java.io.InputStreamReader;
+import java.io.OutputStream;
+import java.io.OutputStreamWriter;
+import java.net.HttpURLConnection;
+import java.net.URL;
+import java.net.URLEncoder;
 
 
 public class Submit extends ActionBarActivity {
 
+    //display image taken in previous activity -- accessed from local storage
     ImageView resultPhoto;
+    //Bitmap for ImageView conversion
     Bitmap myBitmap;
+
     Button submitButton;
     Intent splashIntent, homeIntent;
-    String imageFilePath;
+    String imageFilePath, latitude, longitude;
     EditText submitET;
 
-    TextView submitTV;
+    TextView submitTV, latlongTV;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -43,12 +65,20 @@ public class Submit extends ActionBarActivity {
         submitButton = (Button) findViewById(R.id.submitButton);
         resultPhoto = (ImageView) findViewById(R.id.submitImage);
         submitTV = (TextView) findViewById(R.id.submitTV);
+        latlongTV = (TextView) findViewById(R.id.latlongTV);
 
+        //Gets packaged elements from intent
         splashIntent = getIntent();
         imageFilePath = splashIntent.getStringExtra("imagePath");
+        latitude = splashIntent.getStringExtra("latitude");
+        longitude = splashIntent.getStringExtra("longitude");
 
+        //Sets photo on open from local storage
         myBitmap = BitmapFactory.decodeFile(imageFilePath);
         resultPhoto.setImageBitmap(myBitmap);
+
+        latlongTV.setText("Latitude: " + latitude +"\n"
+                        + "Longitude: " + longitude);
     }
 
     @Override
@@ -75,12 +105,14 @@ public class Submit extends ActionBarActivity {
 
     public void backHome(View v){
 
+        //Make JSON object to package info
         JSONObject jSonObject = new JSONObject();
 
         try{
+            //two fields for JSON object
             jSonObject.put("description", submitET.getText());
             jSonObject.put("imageString", convertImagetoJSON(myBitmap));
-            Toast.makeText(this, "successfully submitted report", Toast.LENGTH_SHORT).show();
+            //Toast.makeText(this, "successfully submitted report", Toast.LENGTH_SHORT).show();
 
             /*
 
@@ -88,13 +120,18 @@ public class Submit extends ActionBarActivity {
 
              */
 
+            //start async json task to send object to server
+            new jsonTask().execute();
+
             startActivity(homeIntent);
         }catch(JSONException ex){
-            Toast.makeText(this, "failed to submit report", Toast.LENGTH_SHORT).show();
+
             ex.printStackTrace();
         }
     }
 
+    //converts image to json
+    //bitmap converted to byte array
     public String convertImagetoJSON(Bitmap bmap){
         final int compressionQuality = 100;
         String encodedImageString;
@@ -102,6 +139,107 @@ public class Submit extends ActionBarActivity {
         bmap.compress(Bitmap.CompressFormat.PNG, compressionQuality, byteArrayBitmapStream);
         byte[] bArray = byteArrayBitmapStream.toByteArray();
         encodedImageString = Base64.encodeToString(bArray, Base64.DEFAULT);
+
+
+
         return encodedImageString;
     }
+
+
+    private class jsonTask extends AsyncTask<String, Void, String>{
+
+        @Override
+        protected String doInBackground(String... params) {
+            if(postMethod()){
+            }else{
+            }
+            return null;
+        }
+
+
+    }
+
+    //posting json info
+    public boolean postMethod() {
+
+        try {
+            //set url address
+            URL url = new URL("http://52.20.122.213:8000/");
+            //get new httpUrlConnection from URL
+            HttpURLConnection connection = (HttpURLConnection) url.openConnection();
+
+
+            //notify for json data
+            connection.setRequestProperty("Content-Type", "application/json");
+            //set method to post
+            connection.setRequestMethod("POST");
+            //unknown body length
+            connection.setChunkedStreamingMode(0);
+            //set connection for output
+            connection.setDoInput (true);
+            connection.setDoOutput (true);
+            connection.setUseCaches (false);
+            //connection.connect();
+
+
+            //hardcoded json example
+            JSONObject testObject = new JSONObject();
+            try{
+                testObject.put("lat", "test lat");
+                testObject.put("long", "long test");
+            }catch (JSONException e) {
+                e.printStackTrace();
+            }
+
+            String jsonString = testObject.toString();
+
+
+            //make output stream for url
+            OutputStream os = connection.getOutputStream();
+            OutputStreamWriter osw = new OutputStreamWriter(os, "UTF-8");
+            //write to outputStream
+            //os.write(testObject.toString().getBytes());
+            osw.write(jsonString);
+            //os.flush();
+
+
+            DataOutputStream printOut = new DataOutputStream(connection.getOutputStream ());
+            printOut.writeBytes(URLEncoder.encode(String.valueOf(jsonString.getBytes()), "UTF-8"));
+            printOut.flush ();
+            printOut.close ();
+
+
+            if (connection.getResponseCode() != HttpURLConnection.HTTP_CREATED) {
+                throw new RuntimeException("Failed : HTTP error code : "
+                        + connection.getResponseCode());
+            }
+
+            BufferedReader br = new BufferedReader(new InputStreamReader(
+                    (connection.getInputStream())));
+
+            String output;
+            System.out.println("Output from Server .... \n");
+
+            while ((output = br.readLine()) != null) {
+                System.out.println(output);
+                Log.d("output", output);
+            }
+
+            connection.disconnect();
+
+            return true;
+        } catch (IOException ex) {
+            ex.printStackTrace();
+            return false;
+        }
+    }
+
 }
+/*
+
+Attempt 1: OutputStreamWriter w/ String
+Attempt 2: OutputStream w/ bytes
+Attempt 3: DataOutputStream w/ String
+
+
+ */

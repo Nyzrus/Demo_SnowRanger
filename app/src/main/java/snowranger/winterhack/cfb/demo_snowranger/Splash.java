@@ -25,13 +25,18 @@ import java.io.File;
 
 public class Splash extends ActionBarActivity {
 
+    //
     Intent cameraIntent,submitIntent;
 
+
+    //For GPS coordinating
     private LocationManager locationManager;
     private LocationListener locationListener;
 
+    //to hold the gps coordinates
     private TextView gpsString;
 
+    //to store the image File and pass it between activities
     private File imageFile;
 
     @Override
@@ -39,19 +44,22 @@ public class Splash extends ActionBarActivity {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_splash);
 
+        //Intent to start the Activity for Submitting
         submitIntent = new Intent(this, Submit.class);
 
         gpsString = (TextView) findViewById(R.id.gpsString);
 
-        //locationButton = (Button) findViewById(R.id.locationButton);
-        //locationDisplay = (TextView) findViewById(R.id.locationTV);
 
         locationManager = (LocationManager) getSystemService(LOCATION_SERVICE);
+
+        //Loaction Listener/Manager handles GPS changes and recording
         locationListener = new LocationListener() {
             @Override
             public void onLocationChanged(Location location) {
                 gpsString.setText("Latitude: " + location.getLatitude()
                                     + "\n Longitude: " + location.getLongitude());
+                submitIntent.putExtra("latitude", location.getLatitude());
+                submitIntent.putExtra("longitude", location.getLongitude());
             }
 
             @Override
@@ -71,24 +79,11 @@ public class Splash extends ActionBarActivity {
 
         };
 
-        //configureButton();
 
 
     }
 
-    /*private void configureButton(){
-        locationButton.setOnClickListener(new View.OnClickListener() {
-            @Override
-            public void onClick(View v) {
-                System.out.print("adsadsadsadsadas");
-                locationManager.requestLocationUpdates("gps", 5000, 0, locationListener);
-                //locationDisplay.append("check");
-            }
-        });
-    }*/
-
-
-
+    //Default method
     @Override
     public boolean onCreateOptionsMenu(Menu menu) {
         // Inflate the menu; this adds items to the action bar if it is present.
@@ -96,6 +91,7 @@ public class Splash extends ActionBarActivity {
         return true;
     }
 
+    //Default method
     @Override
     public boolean onOptionsItemSelected(MenuItem item) {
         // Handle action bar item clicks here. The action bar will
@@ -111,10 +107,8 @@ public class Splash extends ActionBarActivity {
         return super.onOptionsItemSelected(item);
     }
 
-    public void slideThrough(View v){
-        startActivity(cameraIntent);
-    }
-
+    //Opens new intent for use of camera
+    //Starts new activity after camera is selected
     public void takePicture(View v){
         Intent intent = new Intent(MediaStore.ACTION_IMAGE_CAPTURE);
         imageFile = new File(Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_PICTURES), "test.jpg");
@@ -125,6 +119,8 @@ public class Splash extends ActionBarActivity {
         startActivityForResult(intent, 0);
     }
 
+    //Pending result code received, opens to Submit.java and saves the image file at a local space
+    //Also gives absolute path to said image file
     @Override
     protected void onActivityResult(int requestCode, int resultCode, Intent data){
         if(requestCode==0){
@@ -133,7 +129,6 @@ public class Splash extends ActionBarActivity {
                     if(imageFile.exists()){
                         locationManager.requestLocationUpdates("gps", 5000, 0, locationListener);
                         Toast.makeText(this, "successfully saved at " + imageFile.getAbsolutePath(), Toast.LENGTH_LONG).show();
-                        Bundle bundle = new Bundle();
                         submitIntent.putExtra("imagePath", imageFile.getAbsolutePath());
                         startActivity(submitIntent);
                     }else{
